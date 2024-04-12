@@ -73,12 +73,13 @@ payment_schedule_input1 = [[sg.Text('  ')],
     [sg.Text('Settled Date'),sg.Input( key='_settled_', size=(12,1)), sg.CalendarButton('Choose Date',  target='_settled_', format='%m/%d/%Y', default_date_m_d_y=(1,1,2024), )],
     [sg.Text('Term',size =(12,1)), sg.DropDown(term_list, size =(10,1),key = '_schedterm_')],
     [sg.Text('Interest Type',size =(12,1)),sg.DropDown(interest_list, size =(20,1),key='_interesttype_')],
+    [sg.Text("Output Folder:"), sg.Input(key='_outfolder_'), sg.FolderBrowse()],
                   [Collapsible(discount_inputs_termsheet, collapse_key,'Apply Discount', collapsed=False)],
     [sg.Button('Generate Term Sheet', key = '_gensched_')]]
-payment_schedule_input2 =       [ [sg.Text('  ')],
-                                  [sg.Text("Output Folder:"), sg.Input(key='_outfolder_'), sg.FolderBrowse()],
-        [sg.Text('Investor Name', size =(12,1)), sg.InputText(size = (25,1),key = '_name_',default_text='')],
-        [sg.Text('Investor Email', size =(12,1)), sg.InputText(size = (30,1),key = '_email_',default_text='')]]
+# payment_schedule_input2 =       [ [sg.Text('  ')],
+#                                   [sg.Text("Output Folder:"), sg.Input(key='_outfolder_'), sg.FolderBrowse()],
+#         [sg.Text('Investor Name', size =(12,1)), sg.InputText(size = (25,1),key = '_name_',default_text='')],
+#         [sg.Text('Investor Email', size =(12,1)), sg.InputText(size = (30,1),key = '_email_',default_text='')]]
 
 export_title = [[sg.Text('                       Create a Revenue Statement',font=('Arial', 14, 'bold'), text_color='black')]]
 
@@ -308,7 +309,7 @@ opened1 = False
 layout = [[sg.Column([[logo]], justification='center', expand_x=True, expand_y=True)],
           [sg.Column(invest_title,justification='left',vertical_alignment='top'),sg.Column(export_title,justification='left',vertical_alignment='top')],
           [sg.Column(investment_input, justification='left', vertical_alignment='top'),
-           sg.VSeparator(),sg.Column(payment_schedule_input1,justification='left',vertical_alignment='top'),sg.Column(payment_schedule_input2,justification='left',vertical_alignment='top')],
+           sg.VSeparator(),sg.Column(payment_schedule_input1,justification='left',vertical_alignment='top')],
                     [sg.TabGroup(tabgroup_layout,
                        enable_events=True,
                        key='-tabgroup-')]]
@@ -407,7 +408,7 @@ while True:
             monthlyincome = c.discount_monthly_income(totalinterest_phx,float(value["_term_"]))
             yearlyincome = monthlyincome*12
             lift = c.lift_at_maturity(adjusted_bondprice_simple,adjusted_bond_total_s)
-            value_at_mature = c.invest_value_plus_lift(initial_float,totalinterest_phx)
+            value_at_mature = c.invest_value_plus_lift(initial_float,totalinterest_phx, lift)
             # else:
             #     adjusted_bond_total = int(value['_sbondtotal_'])
             #     bondprice = round(c.adjusted_total_bonds(initial_float,0,adjusted_bond_total,value['_totalbondsTF S_']),2)
@@ -483,8 +484,6 @@ while True:
             initial_float = float(initial)
             mature_value_comp_all = c.compound_comparisons(initial_float)
 
-            investor_name = value['_name_']
-            investor_email = value['_email_']
             inputted_path = value['_outfolder_']
             valid_path = cf.is_pathname_valid(inputted_path)
 
@@ -493,7 +492,7 @@ while True:
                 template_path = os.getcwd() + '\\Revenue Statement Template.xlsm'
                 #create filename
                 todays_date = str(date.today())
-                name = 'Term Sheet - ' + investor_name + ' - ' + todays_date + '.xlsm'
+                name = 'Revenue Statement - ' + todays_date + '.xlsm'
 
                 output_path = inputted_path + '\\' + name
 
@@ -569,13 +568,13 @@ while True:
                         totalinterest_phx = c.discount_total_interest(initial_float,schedule_term,adjusted_bond_total_s,schedule_rate)
 
                         lift = c.lift_at_maturity(adjusted_bondprice_simple,adjusted_bond_total_s)
-                        simple_mature_discounted = c.invest_value_plus_lift(initial_float,totalinterest_phx)
+                        simple_mature_discounted = c.invest_value_plus_lift(initial_float,totalinterest_phx, lift)
 
                         simple_payments = sched.simple_interest_schedule_discounted(initial_float,schedule_rate,rate_lift,schedule_term)
                         simple_df = sched.create_payment_table_simple(simple_payments[0], sched.generate_dates(settled_date,schedule_term), simple_payments[1])
                         data_simple = sched.sum_years_s(simple_df)
 
-                        sched.write_to_excel(data_simple, initial_float, simple_mature_discounted, schedule_term, settled_date, interest_type, investor_name, investor_email, discounted_bonds, rate_lift, interest_yaxis_max, ymax_discount, unique_outputpath, template_path)
+                        sched.write_to_excel(data_simple, initial_float, simple_mature_discounted, schedule_term, settled_date, interest_type, discounted_bonds, rate_lift, interest_yaxis_max, ymax_discount, unique_outputpath, template_path)
                         
                     elif interest_type == 'Compounding':
                         comp_bondprice = c.bond_price(schedule_rate,schedule_term,rate_lift)
@@ -593,7 +592,7 @@ while True:
                         compound_df = sched.create_payment_table_compound(Compound_payments[0], Compound_payments[1],sched.generate_dates(settled_date,schedule_term))
                         data_compound = sched.sum_years_c(compound_df)
 
-                        sched.write_to_excel(data_compound, initial_float, compound_mature_discounted, schedule_term, settled_date, interest_type, investor_name, investor_email, discounted_bonds, rate_lift, interest_yaxis_max, ymax_discount, unique_outputpath, template_path)
+                        sched.write_to_excel(data_compound, initial_float, compound_mature_discounted, schedule_term, settled_date, interest_type,  discounted_bonds, rate_lift, interest_yaxis_max, ymax_discount, unique_outputpath, template_path)
 
                 elif discounted_bonds == False:
 
@@ -605,7 +604,7 @@ while True:
                         simple_df = sched.create_payment_table_simple(simple_payments[0], sched.generate_dates(settled_date,schedule_term), simple_payments[1])
                         data_simple = sched.sum_years_s(simple_df)
 
-                        sched.write_to_excel(data_simple, initial_float, c.insert_commas_and_dollar(simple_mature), schedule_term, settled_date, interest_type, investor_name, investor_email, discounted_bonds, schedule_rate, interest_yaxis_max, interest_yaxis_max,unique_outputpath, template_path)
+                        sched.write_to_excel(data_simple, initial_float, c.insert_commas_and_dollar(simple_mature), schedule_term, settled_date, interest_type, discounted_bonds, schedule_rate, interest_yaxis_max, interest_yaxis_max,unique_outputpath, template_path)
                     
                     elif interest_type == 'Compounding':
                         total_bonds = c.total_bonds(initial_float)                    
@@ -613,7 +612,7 @@ while True:
                         compound_df = sched.create_payment_table_compound(Compound_payments[0], Compound_payments[1],sched.generate_dates(settled_date,schedule_term))
                         data_compound = sched.sum_years_c(compound_df)
                     
-                        sched.write_to_excel(data_compound, initial_float, compound_mature, schedule_term, settled_date, interest_type, investor_name, investor_email, discounted_bonds, schedule_rate, interest_yaxis_max, interest_yaxis_max,unique_outputpath, template_path)
+                        sched.write_to_excel(data_compound, initial_float, compound_mature, schedule_term, settled_date, interest_type,  discounted_bonds, schedule_rate, interest_yaxis_max, interest_yaxis_max,unique_outputpath, template_path)
                 
             else:
                 sg.Popup('Choose an Output Folder path')
@@ -709,8 +708,7 @@ while True:
         window.find_element('_phxrate_').Update('%')
         window.find_element('_cdterm_').Update('')
         window.find_element('_cdrate_').Update('%')
-        window.find_element('_name_').Update('')
-        window.find_element('_email_').Update('')
+
 
     elif event == None:
         break

@@ -127,3 +127,4 @@ def is_pathname_valid(pathname: str) -> bool:
         return True
     # If any other exception was raised, this is an unrelated fatal issue
     # (e.g., a bug). Permit this exception to unwind the call stack.
+
